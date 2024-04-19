@@ -6,6 +6,7 @@ import { MapContainer, Marker, Popup, TileLayer, useMapEvents } from 'react-leaf
 import React, { ChangeEvent, FormEvent, SetStateAction } from 'react'
 import api from '../../services/api'
 import axios from 'axios'
+import Dropzone from '../../components/Dropzone'
 
 interface Item {
   id: number
@@ -23,7 +24,7 @@ interface IBGECityResponse {
 
 interface LocationMarkerProps {
   selectedPosition: [number, number]
-  setSelectedPosition: React.Dispatch<SetStateAction<[number, number]>> 
+  setSelectedPosition: React.Dispatch<SetStateAction<[number, number]>>
 }
 
 function LocationMarker({ selectedPosition, setSelectedPosition }: LocationMarkerProps) {
@@ -47,11 +48,12 @@ const CreatePoint = () => {
   const [ufs, setUfs] = React.useState<string[]>([])
   const [cities, setCities] = React.useState<string[]>([])
 
-  const [initialPosition, setInitialPosition] = React.useState<[number, number]>([0, 0])
+  const [initialPosition, setInitialPosition] = React.useState<[number, number]>([-22.9, -43.4])
   const [selectedPosition, setSelectedPosition] = React.useState<[number, number]>([0, 0])
   const [selectedUf, setSelectedUf] = React.useState('0')
   const [selectedCity, setSelectedCity] = React.useState('0')
   const [selectedItems, setSelectedItems] = React.useState<number[]>([])
+  const [selectedFile, setSelectedFile] = React.useState<File>()
 
   const [formData, setFormData] = React.useState({
     name: '',
@@ -81,12 +83,14 @@ const CreatePoint = () => {
       const filteredItems = selectedItems.filter(item => item !== id)
       setSelectedItems(filteredItems)
     } else {
-      setSelectedItems([ ...selectedItems, id ])
+      setSelectedItems([...selectedItems, id])
     }
   }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
+
+    console.log(selectedFile)
 
     const { name, email, whatsapp } = formData
     const uf = selectedUf
@@ -94,15 +98,19 @@ const CreatePoint = () => {
     const [latitude, longitude] = selectedPosition
     const items = selectedItems
 
-    const data = {
-      name,
-      email,
-      whatsapp,
-      uf,
-      city,
-      latitude,
-      longitude,
-      items
+    const data = new FormData()
+
+    data.append('name', name)
+    data.append('email', email)
+    data.append('whatsapp', whatsapp)
+    data.append('uf', uf)
+    data.append('city', city)
+    data.append('latitude', String(latitude))
+    data.append('longitude', String(longitude))
+    data.append('items', items.join(','))
+
+    if (selectedFile) {
+      data.append('image', selectedFile)
     }
 
     await api.post('points', data)
@@ -118,7 +126,7 @@ const CreatePoint = () => {
       .then((response) => {
         setItems(response.data)
       })
-  } ,[])
+  }, [])
 
   React.useEffect(() => {
     axios
@@ -127,7 +135,7 @@ const CreatePoint = () => {
         const ufInitials = response.data.map(uf => uf.sigla)
         setUfs(ufInitials)
       })
-  } ,[])
+  }, [])
 
   React.useEffect(() => {
     if (selectedUf === '0') return
@@ -161,6 +169,8 @@ const CreatePoint = () => {
       <form onSubmit={handleSubmit}>
         <h1>Cadastro do <br /> ponto de coleta</h1>
 
+        <Dropzone onFileUploaded={setSelectedFile} />
+
         <fieldset>
           <legend>
             <h2>Dados</h2>
@@ -175,7 +185,7 @@ const CreatePoint = () => {
               onChange={handleInputChange}
             />
           </div>
-          
+
           <div className="field-group">
             <div className="field">
               <label htmlFor="email">E-mail</label>
@@ -259,7 +269,7 @@ const CreatePoint = () => {
                 >
                   <img src={item.image_url} alt={item.name} />
                   <span>{item.name}</span>
-                </li>    
+                </li>
               )
             })}
           </ul>
